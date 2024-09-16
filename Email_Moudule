@@ -1,0 +1,81 @@
+Sub CreateButtonAndTransferEmail()
+    Dim objExplorer As Outlook.Explorer
+    Dim objSelection As Outlook.Selection
+    Dim objItem As Object
+    Dim objAttachment As Outlook.Attachment
+    Dim objFSO As Object ' Scripting.FileSystemObject
+    Dim objFolder As Object ' Scripting.Folder
+    Dim targetFolderPath As String
+    
+    ' Prompt the user to enter the folder name
+    Dim folderName As String
+    folderName = InputBox("Enter the folder name where you want to save the files:", "Folder Name")
+    
+    ' Validate if folder name is provided
+    If folderName = "" Then
+        MsgBox "No folder name provided. The operation has been canceled.", vbExclamation
+        Exit Sub
+    End If
+    
+    ' Set the target folder path based on the provided folder name
+    targetFolderPath = "\\SAJIB\costing\Folders\" & folderName & "\"
+    
+    ' Create a FileSystemObject
+    Set objFSO = CreateObject("Scripting.FileSystemObject")
+    
+    ' Check if the target folder exists
+    If objFSO.FolderExists(targetFolderPath) Then
+        ' Get the currently active Explorer window
+        Set objExplorer = Application.ActiveExplorer
+        
+        ' Get the selected items in the Explorer window
+        Set objSelection = objExplorer.Selection
+        
+        ' Check if at least one item is selected
+        If objSelection.Count > 0 Then
+            ' Loop through each selected item
+            For Each objItem In objSelection
+                ' Check if the selected item is a MailItem
+                If TypeOf objItem Is Outlook.MailItem Then
+                    ' Create the target folder if it doesn't exist
+                    Set objFolder = objFSO.GetFolder(targetFolderPath)
+                    
+                    ' Save the email and attachments to the target folder
+                    Dim fileName As String
+                    fileName = GetValidFileName(objItem.Subject)
+                    
+                    objItem.SaveAs objFolder.Path & "\" & fileName & ".msg", Outlook.OlSaveAsType.olMSG
+                
+                    ' Save attachments to the target folder
+                    For Each objAttachment In objItem.Attachments
+                        objAttachment.SaveAsFile objFolder.Path & "\" & objAttachment.fileName
+                    Next objAttachment
+                End If
+            Next objItem
+        End If
+    Else
+        MsgBox "The target folder does not exist.", vbExclamation
+    End If
+    
+    ' Clean up objects
+    Set objExplorer = Nothing
+    Set objSelection = Nothing
+    Set objItem = Nothing
+    Set objAttachment = Nothing
+    Set objFSO = Nothing
+    Set objFolder = Nothing
+End Sub
+
+Function GetValidFileName(ByVal fileName As String) As String
+    ' Remove invalid characters from the file name
+    Dim invalidChars As String
+    invalidChars = "\/:*?""<>|"
+    
+    Dim i As Integer
+    For i = 1 To Len(invalidChars)
+        fileName = Replace(fileName, Mid(invalidChars, i, 1), "_")
+    Next i
+    
+    GetValidFileName = fileName
+End Function
+
